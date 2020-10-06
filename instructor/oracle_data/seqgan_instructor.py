@@ -101,11 +101,21 @@ class SeqGANInstructor(BasicInstructor):
         """
         rollout_func = rollout.ROLLOUT(self.gen, cfg.CUDA)
         total_g_loss = 0
+
+        print('g_step in adv_train_generator->', g_step)
+
         for step in range(g_step):
-            inp, target = GenDataIter.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
+            samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
+            print('samples ->', samples.size())
+
+            inp, target = GenDataIter.prepare(samples, gpu=cfg.CUDA)
+            print('inp ->', inp.size())
+            print('target ->', target.size())
 
             # ===Train===
             rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
+            print('rewards ->', rewards.size(), rewards)
+
             adv_loss = self.gen.batchPGLoss(inp, target, rewards)
             self.optimize(self.gen_adv_opt, adv_loss)
             total_g_loss += adv_loss.item()

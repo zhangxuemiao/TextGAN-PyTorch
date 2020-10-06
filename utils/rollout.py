@@ -33,10 +33,16 @@ class ROLLOUT:
 
         # get current state
         hidden = self.gen.init_hidden(batch_size)
+        # print('hidden ->', hidden)
+
         # for i in range(given_num):
         inp = sentences[:, :given_num]
+        print('inp in rollout_mc_search ->', inp.size())
+
         out, hidden = self.gen.forward(inp, hidden, need_hidden=True)
+        print('out in rollout_mc_search 01->', out.size())
         out = out.view(batch_size, -1, self.vocab_size)[:, -1]
+        print('out in rollout_mc_search 02->', out.size())
 
         samples = torch.zeros(batch_size, self.max_seq_len).long()
         samples[:, :given_num] = sentences[:, :given_num]
@@ -46,9 +52,12 @@ class ROLLOUT:
 
         # MC search
         for i in range(given_num, self.max_seq_len):
+            print('i between in given_num and max_seq_len ->', i, given_num, self.max_seq_len)
             out = torch.multinomial(torch.exp(out), 1)
+            print('out after multinomial ->', out)
             samples[:, i] = out.view(-1).data
             inp = out.view(-1)
+            print('samples in rollout_mc_search', samples)
 
             out, hidden = self.gen.forward(inp, hidden, need_hidden=True)
 
@@ -134,23 +143,35 @@ class ROLLOUT:
         :param current_k: current training gen
         :return: reward: [batch_size]
         """
+        print("rollout_num , current_k->", rollout_num, current_k)
         with torch.no_grad():
             batch_size = sentences.size(0)
             rewards = torch.zeros([rollout_num * self.max_seq_len, batch_size]).float()
+            print('rewards_init->', rewards.size())
             if self.gpu:
                 rewards = rewards.cuda()
             idx = 0
             for i in range(rollout_num):
                 for given_num in range(1, self.max_seq_len + 1):
+                    print("rollout_num, given_num ->", rollout_num, given_num)
+
                     samples = self.rollout_mc_search(sentences, given_num)
-                    out = dis.forward(samples)
-                    out = F.softmax(out, dim=-1)
-                    reward = out[:, current_k + 1]
+                    print('samples after rollout_mc_search ->', samples)
+
+                    out = dis.forward(samples)  # 判别器评估生成的samples
+                    out = F.softmax(out, dim=-1)  # 判别器评估生成的samples
+                    print('out ->', out)
+                    reward = out[:, current_k + 1]  # 取其中的一个类别对应的概率当做reward
+                    print(' reward ->', reward)
                     rewards[idx] = reward
                     idx += 1
 
         # rewards = torch.mean(rewards, dim=0)
-        rewards = torch.mean(rewards.view(batch_size, self.max_seq_len, rollout_num), dim=-1)
+        print('raw rewards ->', rewards.size(), rewards)
+        rewards = rewards.view(batch_size, self.max_seq_len, rollout_num)
+        print('rewards after view ->', rewards.size(), rewards)
+        rewards = torch.mean(rewards, dim=-1)
+        print('final rewards after mean ->', rewards.size(), rewards)
         return rewards
 
     def get_reward_leakgan(self, sentences, rollout_num, dis, current_k):

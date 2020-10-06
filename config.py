@@ -14,7 +14,7 @@ from time import strftime, localtime
 
 # ===Program===
 if_test = False
-CUDA = True
+CUDA = False
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
@@ -45,7 +45,7 @@ samples_num = 10000  # 10000, mr15: 2000,
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 10
 inter_epoch = 15  # LeakGAN-10
-batch_size = 64  # 64
+batch_size = 4  # 64
 start_letter = 1
 padding_idx = 0
 start_token = 'BOS'
